@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -12,31 +16,24 @@ import (
 
 var cfgFile string
 
-// CommentedStringSlice represents a slice of strings with header comment
-type CommentedStringSlice struct {
-    Values  []string `yaml:"values"`
-    Comment string   `yaml:"comment,omitempty"`
-}
-
 // Config represents the structure of the YAML config file
-type Yaml struct {
-	DefaultFolders CommentedStringSlice `yaml:"defaultFolders"`
-    MaxDepth       CommentedStringSlice `yaml:"maxDepth"`
+type navConfig struct {
+	DefaultFolders []string `yaml:"defaultFolders"`
+	MaxDepth       int                  `yaml:"maxDepth"`
 }
 
-// MarshalYAML implements custom marshaling for CommentedStringSlice
-func (c CommentedStringSlice) MarshalYAML() (interface{}, error) {
-    var result string
-    if c.Comment != "" {
-        result = "# " + c.Comment + "\n"
-    }
-    
-    for _, v := range c.Values {
-        result += "- " + v + "\n"
-    }
-    
-    return result, nil
+func expandPath(path string) string {
+	if path[:2] == "~/" {
+		homedir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Println("Error getting home directory:", err)
+			return path
+		}
+		return homedir + path[1:]
+	}
+	return path
 }
+
 
 func main() {
     var rootCmd = &cobra.Command{
@@ -50,11 +47,62 @@ func main() {
     }
 
 	rootCmd.AddCommand(&cobra.Command{
-		Use: "nav",
+		Use:   "nav [folder]",
 		Short: "Navigate to a project folder",
 		Aliases: []string{"nav"},
-		Run: func(cmd *cobra.Command, args[]string) {
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			inputFolder := args[0]
+			folders := viper.GetStringSlice("defaultFolders")
+			if len(folders) == 0 {
+				fmt.Println("No default folders found in the configuration.")
+				return
+			}
 
+			var wg sync.WaitGroup
+			var results []string
+			var mu sync.Mutex
+
+			for _, folder := range folders {
+				wg.Add(1)
+				go func(folder string) {
+					defer wg.Done()
+					folder = expandPath(folder)
+					files, err := os.ReadDir(folder)
+					if err != nil {
+						fmt.Printf("Error reading folder %s: %v\n", folder, err)
+						return
+					}
+
+					for _, file := range files {
+						if file.IsDir() && strings.Contains(strings.ToLower(file.Name()), strings.ToLower(inputFolder)) {
+							mu.Lock()
+							results = append(results, folder+"/"+file.Name())
+							mu.Unlock()
+						}
+					}
+				}(folder)
+			}
+			wg.Wait()
+
+			if len(results) == 0 {
+				fmt.Println("No matching folders found.")
+			} else  if len(results) > 1{
+
+				fmt.Println("More than one project returned:")
+				for i, result := range results {
+					fmt.Printf("%d: %s\n", i, result)
+				}
+				fmt.Println("Enter index of selection")
+				var response string
+				fmt.Scanln(&response)
+				index, err := strconv.Atoi(response)
+				if err != nil || index < 0 || index >= len(results) {
+					fmt.Println("Invalid selection.")
+					return
+				}
+				fmt.Printf("You selected: %s", results[index])
+			}
 		},
 	})
 
@@ -111,19 +159,14 @@ func createConfig(defaultConfigPath string) {
 		fmt.Println("Creating default config file at " + defaultConfigPath)
 
 		// In your main function:
-		configYaml := Yaml{
-			DefaultFolders: CommentedStringSlice{
-				Values: []string{
-					"~/Documents",
-					"~/Projects",
-				},
-				Comment: "List of default folders to search",
+		configYaml:= navConfig{
+			DefaultFolders: []string{
+				"~/Documents",
+				"~/Projects",
 			},
-			MaxDepth: CommentedStringSlice{
-				Values:   []string{"3"},
-				Comment: "Maximum depth to search in directories",
-			},
+			MaxDepth: 3,
 		}
+
 		data, err := yaml.Marshal(&configYaml)
 		if err != nil {
 			fmt.Println(err)
@@ -155,7 +198,7 @@ func initConfig() {
     viper.AutomaticEnv()
 
     if err := viper.ReadInConfig(); err == nil {
-        fmt.Println("Config file found:", viper.ConfigFileUsed())
+		printConfigMessage(8, "/tmp/gonav_last_printed")
     } else {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -165,8 +208,23 @@ func initConfig() {
 		defaultConfigPath := home + "/.gonav.yaml"
 		createConfig(defaultConfigPath)
 	}
+}
 
+func printConfigMessage(hour int64, cacheFile string) {
+	configFile := viper.ConfigFileUsed()
+	printInterval := time.Duration(hour) * time.Hour
 
+	lastPrinted := time.Time{}
+	if data, err := os.ReadFile(cacheFile); err == nil {
+		if t, err := time.Parse(time.RFC3339, string(data)); err == nil {
+		lastPrinted = t
+		}
+	}
+
+	if time.Since(lastPrinted) > printInterval {
+		fmt.Println("Config file found:", configFile, "\nThis message is printed once every 8 hours")
+		os.WriteFile(cacheFile, []byte(time.Now().Format(time.RFC3339)), 0644)
+	}
 }
 
 func openInEditor(filePath string) {
