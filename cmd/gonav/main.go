@@ -38,7 +38,7 @@ func expandPath(path string) string {
 func main() {
     var rootCmd = &cobra.Command{
 		Args:  cobra.NoArgs,
-        Use:   "gonav",
+        Use:   "nav",
         Short: "Gonav is a CLI application",
         Long:  `Gonav is a CLI application written in Go.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -46,10 +46,14 @@ func main() {
 		},
     }
 
-	rootCmd.AddCommand(&cobra.Command{
-		Use:   "nav [folder]",
+
+	navCmd := (&cobra.Command{
+		Use:   "go [folder]",
 		Short: "Navigate to a project folder",
-		Aliases: []string{"nav"},
+		Long: `Navigate to a project folder within the default folders specified in the configuration. 
+		You can specify the depth of the search using the --depth flag. 
+		Use the --code flag to open the selected folder with VS Code.`,
+		Aliases: []string{"go"},
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			inputFolder := args[0]
@@ -59,6 +63,14 @@ func main() {
 				return
 			}
 
+			var maxDepth int
+			if flag := cmd.Flags().Lookup("depth"); flag != nil {
+				maxDepth, _ = strconv.Atoi(flag.Value.String())
+			} else {
+				maxDepth = viper.GetInt("maxDepth")
+			}
+			fmt.Printf("Using max depth: %d\n", maxDepth)
+			
 			var wg sync.WaitGroup
 			var results []string
 			var mu sync.Mutex
@@ -101,10 +113,28 @@ func main() {
 					fmt.Println("Invalid selection.")
 					return
 				}
-				fmt.Printf("You selected: %s", results[index])
+				fmt.Printf("You selected: %s\n", results[index])
+				code , _:= cmd.Flags().GetBool("code")
+				if code {
+					err = exec.Command("code", results[index]).Start()
+					if err != nil {
+						fmt.Println("Failed to open folder with code: %v\n", err)
+					}
+					return
+				}
+
+				
+				err = exec.Command("xdg-open", results[index]).Start()
+				if err != nil {
+					fmt.Printf("Failed to open folder: %v\n", err)
+				}
 			}
 		},
 	})
+	// Define flags
+	navCmd.Flags().BoolP("code", "c", false, "Whether to open a folder with VS Code")
+	
+	rootCmd.AddCommand(navCmd)
 
 	rootCmd.AddCommand(&cobra.Command{
 		Use:     "config",
@@ -132,7 +162,7 @@ func main() {
 
     cobra.OnInitialize(initConfig)
 
-    rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.gonav.yaml)")
+    // rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.gonav.yaml)")
 
     if err := rootCmd.Execute(); err != nil {
         fmt.Println(err)
@@ -145,7 +175,6 @@ func printConfig() {
 		fmt.Println("No configuration found.")
 		os.Exit(1)
 	}
-	fmt.Println(settings)
 	for key, value := range settings {
 		fmt.Printf("%s: %v\n", key, value)
 	}
