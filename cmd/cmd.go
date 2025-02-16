@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -25,17 +26,18 @@ var navCmd = (&cobra.Command{
 		inputFolder := args[0]
 		folders := viper.GetStringSlice("defaultFolders")
 		if len(folders) == 0 {
-			fmt.Println("No default folders found in the configuration.")
+			fmt.Printf("%sNo default folders found in the configuration.", helpers.ColorBoldRed)
 			return
 		}
 
-		var maxDepth int
-		if flag := cmd.Flags().Lookup("depth"); flag != nil {
-			maxDepth, _ = strconv.Atoi(flag.Value.String())
-		} else {
-			maxDepth = viper.GetInt("maxDepth")
-		}
-		fmt.Printf("Using max depth: %d\n", maxDepth)
+		// TODO maxDepth not currently being used
+		// var maxDepth int
+		// if flag := cmd.Flags().Lookup("depth"); flag != nil {
+		// 	maxDepth, _ = strconv.Atoi(flag.Value.String())
+		// } else {
+		// 	maxDepth = viper.GetInt("maxDepth")
+		// }
+		// fmt.Printf("Using max depth: %s%d%s\n",helpers.ColorPurple, maxDepth, helpers.ColorReset)
 		
 		var wg sync.WaitGroup
 		var results []string
@@ -68,17 +70,17 @@ var navCmd = (&cobra.Command{
 			fmt.Println("No matching folders found.")
 		} else  if len(results) > 1{
 
-			fmt.Println("More than one project returned:")
+			fmt.Printf("%sMore than one project returned:\n", helpers.ColorYellow)
 			for i, result := range results {
-				fmt.Printf("%d: %s\n", i, result)
+				fmt.Printf("%s%d%s: %s\n",helpers.ColorBlue, i,helpers.ColorReset, result)
 			}
-			fmt.Println("Enter index of selection")
+			fmt.Printf("%sEnter index of selection: %s", helpers.ColorBoldGreen, helpers.ColorReset)
 			
 			var response string
 			fmt.Scanln(&response)
 			index, err := strconv.Atoi(response)
 			if err != nil || index < 0 || index >= len(results) {
-				fmt.Println("Invalid selection.")
+				fmt.Printf("%sInvalid selection.", helpers.ColorRed)
 				return
 			}
 			fmt.Printf("You selected: %s\n", results[index])
@@ -86,13 +88,21 @@ var navCmd = (&cobra.Command{
 			if code {
 				err = exec.Command("code", results[index]).Start()
 				if err != nil {
-					fmt.Printf("Failed to open folder with code: %v\n", err)
+					fmt.Printf("%sFailed to open folder with code: %v\n",helpers.ColorBoldRed, err)
 				}
 				return
 			}
 
-			
-			err = exec.Command("xdg-open", results[index]).Start()
+			var command string
+			if runtime.GOOS == "windows" {
+				command = "explorer"
+			} else if runtime.GOOS == "darwin"{
+				command = "open"
+			} else {
+				command = "xdg-open"
+			}
+
+			err = exec.Command(command, results[index]).Start()
 			if err != nil {
 				fmt.Printf("Failed to open folder: %v\n", err)
 			}
@@ -107,11 +117,11 @@ var printCmd = (&cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 			settings := viper.AllSettings()
 			if len(settings) == 0 {
-				fmt.Println("No configuration found.")
+				fmt.Printf("%sNo configuration found.\n", helpers.ColorRed)
 				os.Exit(1)
 			}
 			for key, value := range settings {
-				fmt.Printf("%s: %v\n", key, value)
+				fmt.Printf("%s%s%s: %v\n",helpers.ColorBlue, key,helpers.ColorReset, value)
 			}
 	},
 })
@@ -125,7 +135,7 @@ var addCmd = (&cobra.Command{
 		configFile := viper.ConfigFileUsed()
 
 		if _, err := os.Stat(configFile); os.IsNotExist(err) {
-			fmt.Println("No config file found. Initialize with `gonav`")
+			fmt.Printf("%sNo config file found. Initialize with `gonav`", helpers.ColorRed)
 			return
 		}
 		helpers.OpenInEditor(configFile)
