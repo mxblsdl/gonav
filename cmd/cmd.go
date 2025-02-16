@@ -49,6 +49,7 @@ var navCmd = (&cobra.Command{
 				defer wg.Done()
 				folder = helpers.ExpandPath(folder)
 				// TODO make recursive here with Walk
+				// files, err := helpers.ScanWithWalkDir(folder)
 				files, err := os.ReadDir(folder)
 				if err != nil {
 					fmt.Printf("Error reading folder %s: %v\n", folder, err)
