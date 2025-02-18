@@ -19,9 +19,9 @@ jobs:
       - name: Build binaries
         run: |
           mkdir -p dist
-          GOOS=linux GOARCH=amd64 go build -o dist/myapp-linux-amd64
-          GOOS=darwin GOARCH=amd64 go build -o dist/myapp-darwin-amd64
-          GOOS=windows GOARCH=amd64 go build -o dist/myapp-windows-amd64.exe
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/gonav-linux-amd64
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/gonav-darwin-amd64
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/gonav-windows-amd64.exe
 
       - name: Create Release
         id: create_release
