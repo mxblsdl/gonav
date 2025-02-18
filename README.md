@@ -8,7 +8,6 @@ The tool runs off of a config file that specifies folders to search. The main co
 
 ## TODOs
 
-- add color to the terminal messages
 - make `go` recursive
 - exclude venv folders by default
 - speed tests?

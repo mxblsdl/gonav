@@ -2,8 +2,11 @@ package helpers
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -109,4 +112,32 @@ func InitConfig() {
 		defaultConfigPath := home + "/.gonav.yaml"
 		createConfig(defaultConfigPath)
 	}
+}
+
+func ScanWithWalkDir(root string) ([]string,error) {
+    var folders []string
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+        if err != nil {
+            return err
+        }
+        
+        // Skip hidden files and directories
+        if strings.HasPrefix(filepath.Base(path), ".") {
+            if d.IsDir() {
+                return filepath.SkipDir
+            }
+            return nil
+        }
+        
+          // Only add directories to the slice
+		  if d.IsDir() {
+            folders = append(folders, path)
+        }
+		return nil
+    	})
+		if err != nil {
+			return nil, err
+		}
+
+        return folders, nil
 }
