@@ -60,18 +60,19 @@ func PrintConfigMessage(hour int64, cacheFile string) {
 }
 
 func createConfig(defaultConfigPath string) {
-	fmt.Println("Config file does not exist. Do you want to create a default config file? (y/n)")
+	fmt.Printf("Config file does not exist. Do you want to create a default config file? %s(y/n)%s\n", ColorGreen, ColorReset)
 	var response string
 	fmt.Scanln(&response)
 	if response == "y" || response == "Y" {
 		fmt.Println("Creating default config file at " + defaultConfigPath)
 
 		configYaml:= navConfig{
-			DefaultFolders: []string{
+			Folders: []string{
 				"~/Documents",
 				"~/Projects",
 			},
 			MaxDepth: 3,
+			Comments: "Add folders to search through in the folders section. This line can be deleted.",
 		}
 
 		data, err := yaml.Marshal(&configYaml)

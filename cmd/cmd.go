@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/mxblsdl/gonav/helpers"
 	"github.com/spf13/cobra"
@@ -24,21 +25,14 @@ var navCmd = (&cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		inputFolder := args[0]
-		folders := viper.GetStringSlice("defaultFolders")
+		folders := viper.GetStringSlice("Folders")
 		if len(folders) == 0 {
 			fmt.Printf("%sNo default folders found in the configuration.", helpers.ColorBoldRed)
 			return
 		}
-
-		// TODO maxDepth not currently being used
-		// var maxDepth int
-		// if flag := cmd.Flags().Lookup("depth"); flag != nil {
-		// 	maxDepth, _ = strconv.Atoi(flag.Value.String())
-		// } else {
-		// 	maxDepth = viper.GetInt("maxDepth")
-		// }
-		// fmt.Printf("Using max depth: %s%d%s\n",helpers.ColorPurple, maxDepth, helpers.ColorReset)
 		
+		start := time.Now()
+
 		var wg sync.WaitGroup
 		var results []string
 		var mu sync.Mutex
@@ -66,6 +60,9 @@ var navCmd = (&cobra.Command{
 			}(folder)
 		}
 		wg.Wait()
+
+		elapsed := time.Since(start)
+		fmt.Printf("%sOperation took %s\n",helpers.ColorGreen, elapsed)
 
 		if len(results) == 0 {
 			fmt.Println("No matching folders found.")
