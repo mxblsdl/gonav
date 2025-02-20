@@ -23,7 +23,7 @@ jobs:
           GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-darwin-amd64
           GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-windows-amd64.exe
           # Set executable permissions for Unix-based systems
-          chmod +x dist/myapp-linux-amd64 dist/nav-darwin-amd64
+          chmod +x dist/nav-linux-amd64 dist/nav-darwin-amd64
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
