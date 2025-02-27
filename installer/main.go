@@ -8,8 +8,8 @@ import (
 	"runtime"
 )
 
-//go:embed binary/nav-windows*
-//go:embed binary/nav-linux*
+//go:embed binary/windows/*
+//go:embed binary/linux/*
 var embeddedFiles embed.FS
 
 var (
