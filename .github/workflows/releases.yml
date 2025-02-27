@@ -19,11 +19,19 @@ jobs:
       - name: Build binaries
         run: |
           mkdir -p dist
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-linux-amd64
-          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-darwin-amd64
-          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-windows-amd64.exe
-          # Set executable permissions for Unix-based systems
-          chmod +x dist/nav-linux-amd64 dist/nav-darwin-amd64
+          mkdir -p binary
+
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o binary/linux/nav
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o binary/darwin/nav
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o binary/windows/nav.exe
+          chmod +x installer/binary/darwin/* installer/binary/linux/*
+
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-linux-amd64 installer/main.go
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-darin-amd64 installer/main.go
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-windows-amd64.exe installer/main.go
+          chmod +x dist/nav-linux* dist/nav-darwin**
+
+          rm -rf binary/
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
