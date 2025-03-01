@@ -10,6 +10,7 @@ import (
 
 //go:embed binary/windows/*
 //go:embed binary/linux/*
+
 var embeddedFiles embed.FS
 
 var (
@@ -26,7 +27,10 @@ func main() {
 		binName = binaryName + ".exe"
 	case "linux":
 		destDir = ExpandPath("~/bin")
-		binName = binaryName	
+		binName = binaryName
+	case "darwin":
+		destDir = ExpandPath("~/bin")
+		binName = binaryName
 	}
 	// Create destination directory if it doesn't exist (Windows)
 	if runtime.GOOS == "windows" {
