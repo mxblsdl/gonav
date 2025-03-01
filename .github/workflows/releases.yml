@@ -24,7 +24,7 @@ jobs:
           GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o binary/linux/nav
           GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o binary/darwin/nav
           GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o binary/windows/nav.exe
-          chmod +x installer/binary/darwin/* installer/binary/linux/*
+          chmod +x binary/darwin/* binary/linux/*
 
           GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-linux-amd64 installer/main.go
           GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-darin-amd64 installer/main.go
