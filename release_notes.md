@@ -1,3 +1,3 @@
 ## Release Notes
 
-- testing releases
+- Creating installer for all operating systems
