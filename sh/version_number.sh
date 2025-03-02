@@ -11,10 +11,11 @@ get_next_version() {
     fi
 
     # Get latest version from GitHub releases
-    local version=$(gh release list -L 1 | grep -o "[0-9]\.[0-9]\.[0-9]")
+    local version=$(gh release list -L 1 --json tagName --jq '.[0].tagName' | sed 's/[^0-9.]//g')
     if [ -z "$version" ]; then
         version="0.0.0"  # Default if no releases exist
     fi
+    # echo $version
 
     # Split the version
     local major=$(echo "$version" | cut -d. -f1)
