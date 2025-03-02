@@ -83,15 +83,6 @@ var navCmd = (&cobra.Command{
 				fmt.Printf("%sInvalid selection.", helpers.ColorRed)
 				return
 			}
-			fmt.Printf("You selected: %s\n", results[index])
-			code , _:= cmd.Flags().GetBool("code")
-			if code {
-				err = exec.Command("code", results[index]).Start()
-				if err != nil {
-					fmt.Printf("%sFailed to open folder with code: %v\n",helpers.ColorBoldRed, err)
-				}
-				return
-			}
 		} else {
 			index = 0
 		}
@@ -103,8 +94,14 @@ var navCmd = (&cobra.Command{
 		} else {
 			command = "xdg-open"
 		}
-	
-		exec.Command(command, results[index]).Start()
+		
+		fmt.Printf("You selected: %s\n", results[index])
+		code , _:= cmd.Flags().GetBool("code")
+		if code {
+			exec.Command("code", results[index]).Start()
+		} else {
+			exec.Command(command, results[index]).Start()
+		}
 	},
 })
 
