@@ -1,3 +1,3 @@
-# The automated release
+# Flag fix
 
-- Creating relases from a single bash command
+- Fixes an issue where 'code' flag was not being triggered
