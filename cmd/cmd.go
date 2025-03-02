@@ -64,8 +64,10 @@ var navCmd = (&cobra.Command{
 		elapsed := time.Since(start)
 		fmt.Printf("%sOperation took %s\n",helpers.ColorGreen, elapsed)
 
+		var index int
 		if len(results) == 0 {
 			fmt.Println("No matching folders found.")
+			return
 		} else  if len(results) > 1{
 
 			fmt.Printf("%sMore than one project returned:\n", helpers.ColorYellow)
@@ -90,21 +92,19 @@ var navCmd = (&cobra.Command{
 				}
 				return
 			}
-
-			var command string
-			if runtime.GOOS == "windows" {
-				command = "explorer"
-			} else if runtime.GOOS == "darwin"{
-				command = "open"
-			} else {
-				command = "xdg-open"
-			}
-
-			err = exec.Command(command, results[index]).Start()
-			if err != nil {
-				fmt.Printf("Failed to open folder: %v\n", err)
-			}
+		} else {
+			index = 0
 		}
+		var command string
+		if runtime.GOOS == "windows" {
+			command = "explorer"
+		} else if runtime.GOOS == "darwin"{
+			command = "open"
+		} else {
+			command = "xdg-open"
+		}
+	
+		exec.Command(command, results[index]).Start()
 	},
 })
 
