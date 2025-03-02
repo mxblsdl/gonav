@@ -1,3 +1,3 @@
-## Release Notes
+# The automated release
 
-- Creating installer for all operating systems
+- Creating relases from a single bash command

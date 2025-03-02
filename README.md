@@ -12,4 +12,5 @@ While there are probably other tools that perform this same function I really wa
 
 - make `go` recursive with a max depth parameter specified
 - exclude venv, node_modules, others by default
-- speed tests?
+- make binary executable somehow
+  - tarball?

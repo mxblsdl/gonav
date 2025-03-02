@@ -3,7 +3,7 @@ name: Release Go Binaries
 on:
   push:
     tags:
-      - "v*"
+      - "None"
 
 jobs:
   release:
@@ -27,7 +27,7 @@ jobs:
           chmod +x binary/darwin/* binary/linux/*
 
           GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-linux-amd64 installer/main.go
-          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-darin-amd64 installer/main.go
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-darwin-amd64 installer/main.go
           GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-windows-amd64.exe installer/main.go
           chmod +x dist/nav-linux* dist/nav-darwin**
 
