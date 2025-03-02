@@ -21,8 +21,8 @@ GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o installer/dist/nav-window
 
 chmod +x installer/dist/nav-linux** installer/dist/nav-darwin**
 
-echo "Cleaning up binaries"
-rm -rf installer/binary/
+# echo "Cleaning up binaries"
+# rm -rf installer/binary/
 
 # echo "Build complete. Binaries located in installer/binary/"
 ls -R installer/dist/
