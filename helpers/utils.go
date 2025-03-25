@@ -6,13 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
-
 
 func ExpandPath(path string) string {
 	if path[:2] == "~/" {
@@ -27,19 +27,19 @@ func ExpandPath(path string) string {
 }
 
 func OpenInEditor(filePath string) {
-    editor := os.Getenv("EDITOR")
-    if editor == "" {
-        editor = "nano" // default to nano if EDITOR is not set
-    }
-    cmd := exec.Command(editor, filePath)
-    cmd.Stdin = os.Stdin
-    cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
-    err := cmd.Run()
-    if err != nil {
-        fmt.Println("Error opening config file in editor:", err)
-        os.Exit(1)
-    }
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "nano" // default to nano if EDITOR is not set
+	}
+	cmd := exec.Command(editor, filePath)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		fmt.Println("Error opening config file in editor:", err)
+		os.Exit(1)
+	}
 }
 
 func PrintConfigMessage(hour int64, cacheFile string) {
@@ -49,13 +49,16 @@ func PrintConfigMessage(hour int64, cacheFile string) {
 	lastPrinted := time.Time{}
 	if data, err := os.ReadFile(cacheFile); err == nil {
 		if t, err := time.Parse(time.RFC3339, string(data)); err == nil {
-		lastPrinted = t
+			lastPrinted = t
 		}
 	}
 
 	if time.Since(lastPrinted) > printInterval {
 		fmt.Println("Config file found:", configFile, "\nThis message is printed once every 8 hours")
-		os.WriteFile(cacheFile, []byte(time.Now().Format(time.RFC3339)), 0644)
+		err := os.WriteFile(cacheFile, []byte(time.Now().Format(time.RFC3339)), 0644)
+		if err != nil {
+			fmt.Println("Error writing to cache file:", err)
+		}
 	}
 }
 
@@ -66,7 +69,7 @@ func createConfig(defaultConfigPath string) {
 	if response == "y" || response == "Y" {
 		fmt.Println("Creating default config file at " + defaultConfigPath)
 
-		configYaml:= navConfig{
+		configYaml := navConfig{
 			Folders: []string{
 				"~/Documents",
 				"~/Projects",
@@ -86,8 +89,9 @@ func createConfig(defaultConfigPath string) {
 			os.Exit(1)
 		}
 		fmt.Println("Default config file created at", defaultConfigPath)
-		OpenInEditor(defaultConfigPath)	
-}}
+		OpenInEditor(defaultConfigPath)
+	}
+}
 
 func InitConfig() {
 	home, err := os.UserHomeDir()
@@ -98,47 +102,68 @@ func InitConfig() {
 	viper.AddConfigPath(home)
 	viper.SetConfigName(".gonav")
 	viper.SetConfigType("yaml")
-    
 
-    viper.AutomaticEnv()
+	viper.AutomaticEnv()
 
-    if err := viper.ReadInConfig(); err == nil {
-		PrintConfigMessage(8, "/tmp/gonav_last_printed")
-    } else {
+	if err := viper.ReadInConfig(); err == nil {
+		cacheFile := filepath.Join(os.TempDir(), "gonav_last_printed")
+		PrintConfigMessage(8, cacheFile)
+	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		defaultConfigPath := home + "/.gonav.yaml"
+		defaultConfigPath := filepath.Join(home, ".gonav.yaml")
 		createConfig(defaultConfigPath)
 	}
 }
 
-func ScanWithWalkDir(root string) ([]string,error) {
-    var folders []string
+func ScanWithWalkDir(root string) ([]string, error) {
+	var folders []string
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-        if err != nil {
-            return err
-        }
-        
-        // Skip hidden files and directories
-        if strings.HasPrefix(filepath.Base(path), ".") {
-            if d.IsDir() {
-                return filepath.SkipDir
-            }
-            return nil
-        }
-        
-          // Only add directories to the slice
-		  if d.IsDir() {
-            folders = append(folders, path)
-        }
-		return nil
-    	})
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-        return folders, nil
+		// Skip hidden files and directories
+		if strings.HasPrefix(filepath.Base(path), ".") {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		// Only add directories to the slice
+		if d.IsDir() {
+			folders = append(folders, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return folders, nil
+}
+
+func GetShellCommand(path string, code bool) *exec.Cmd {
+	if code {
+		return exec.Command("code", path)
+	}
+
+	switch runtime.GOOS {
+	case "windows":
+		// For Git Bash
+		// return exec.Command("bash", "-c", fmt.Sprintf("cd '%s'", path))
+		// For PowerShell
+		// return exec.Command("powershell", "-NoProfile", "-Command", fmt.Sprintf("Set-Location '%s'", path))
+		// For CMD
+		// fmt.Println("Executing command:", "cmd", "explorer", path)
+		return exec.Command("cmd", "/C", "start", path)
+	case "darwin":
+		return exec.Command("open", path)
+	default: // Linux
+		return exec.Command("xdg-open", path)
+	}
 }

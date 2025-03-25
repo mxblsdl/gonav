@@ -3,8 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,7 +20,7 @@ var navCmd = (&cobra.Command{
 	You can specify the depth of the search using the --depth flag. 
 	Use the --code flag to open the selected folder with VS Code.`,
 	Aliases: []string{"go"},
-	Args:  cobra.ExactArgs(1),
+	Args:    cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		inputFolder := args[0]
 		folders := viper.GetStringSlice("Folders")
@@ -30,7 +28,7 @@ var navCmd = (&cobra.Command{
 			fmt.Printf("%sNo default folders found in the configuration.", helpers.ColorBoldRed)
 			return
 		}
-		
+
 		start := time.Now()
 
 		var wg sync.WaitGroup
@@ -62,46 +60,40 @@ var navCmd = (&cobra.Command{
 		wg.Wait()
 
 		elapsed := time.Since(start)
-		fmt.Printf("%sOperation took %s\n",helpers.ColorGreen, elapsed)
+		fmt.Printf("%sOperation took %s\n", helpers.ColorGreen, elapsed)
 
 		var index int
 		if len(results) == 0 {
 			fmt.Println("No matching folders found.")
 			return
-		} else  if len(results) > 1{
+		} else if len(results) > 1 {
 
 			fmt.Printf("%sMore than one project returned:\n", helpers.ColorYellow)
 			for i, result := range results {
-				fmt.Printf("%s%d%s: %s\n",helpers.ColorBlue, i,helpers.ColorReset, result)
+				fmt.Printf("%s%d%s: %s\n", helpers.ColorBlue, i, helpers.ColorReset, result)
 			}
 			fmt.Printf("%sEnter index of selection: %s", helpers.ColorBoldGreen, helpers.ColorReset)
-			
+
 			var response string
 			fmt.Scanln(&response)
 			index, err := strconv.Atoi(response)
 			if err != nil || index < 0 || index >= len(results) {
-				fmt.Printf("%sInvalid selection.", helpers.ColorRed)
+				fmt.Printf("%sInvalid selection.%s", helpers.ColorRed, helpers.ColorReset)
 				return
 			}
 		} else {
 			index = 0
 		}
-		var command string
-		if runtime.GOOS == "windows" {
-			command = "explorer"
-		} else if runtime.GOOS == "darwin"{
-			command = "open"
-		} else {
-			command = "xdg-open"
+
+		fmt.Printf("You selected: %s\n%s", results[index], helpers.ColorReset)
+		code, _ := cmd.Flags().GetBool("code")
+		command := helpers.GetShellCommand(results[index], code)
+		err := command.Start()
+		if err != nil {
+			fmt.Println("Error opening folder:", err)
+			os.Exit(1)
 		}
-		
-		fmt.Printf("You selected: %s\n", results[index])
-		code , _:= cmd.Flags().GetBool("code")
-		if code {
-			exec.Command("code", results[index]).Start()
-		} else {
-			exec.Command(command, results[index]).Start()
-		}
+
 	},
 })
 
@@ -110,21 +102,20 @@ var printCmd = (&cobra.Command{
 	Short:   "Print the configuration",
 	Aliases: []string{"pc"},
 	Run: func(cmd *cobra.Command, args []string) {
-			settings := viper.AllSettings()
-			if len(settings) == 0 {
-				fmt.Printf("%sNo configuration found.\n", helpers.ColorRed)
-				os.Exit(1)
-			}
-			for key, value := range settings {
-				fmt.Printf("%s%s%s: %v\n",helpers.ColorBlue, key,helpers.ColorReset, value)
-			}
+		settings := viper.AllSettings()
+		if len(settings) == 0 {
+			fmt.Printf("%sNo configuration found.\n", helpers.ColorRed)
+			os.Exit(1)
+		}
+		for key, value := range settings {
+			fmt.Printf("%s%s%s: %v\n", helpers.ColorBlue, key, helpers.ColorReset, value)
+		}
 	},
 })
 
-
 var addCmd = (&cobra.Command{
-	Use: "add",
-	Short: "Edit the config file",
+	Use:     "add",
+	Short:   "Edit the config file",
 	Aliases: []string{"a"},
 	Run: func(cmd *cobra.Command, args []string) {
 		configFile := viper.ConfigFileUsed()
@@ -141,7 +132,7 @@ func init() {
 	rootCmd.AddCommand(navCmd)
 	rootCmd.AddCommand(printCmd)
 	rootCmd.AddCommand(addCmd)
-		
+
 	// Define flags
 	navCmd.Flags().BoolP("code", "c", false, "Whether to open a folder with VS Code")
 }
