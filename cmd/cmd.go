@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strconv"
@@ -74,11 +75,18 @@ var navCmd = (&cobra.Command{
 			}
 			fmt.Printf("%sEnter index of selection: %s", helpers.ColorBoldGreen, helpers.ColorReset)
 
-			var response string
-			fmt.Scanln(&response)
-			index, err := strconv.Atoi(response)
-			if err != nil || index < 0 || index >= len(results) {
-				fmt.Printf("%sInvalid selection.%s", helpers.ColorRed, helpers.ColorReset)
+			// Create a scanner to properly read input
+			scanner := bufio.NewScanner(os.Stdin)
+			if scanner.Scan() {
+				response := scanner.Text()
+				userIndex, err := strconv.Atoi(strings.TrimSpace(response))
+				if err != nil || userIndex < 0 || userIndex >= len(results) {
+					fmt.Printf("%sInvalid selection: %v%s\n", helpers.ColorRed, err, helpers.ColorReset)
+					return
+				}
+				index = userIndex
+			} else {
+				fmt.Printf("%sError reading input%s\n", helpers.ColorRed, helpers.ColorReset)
 				return
 			}
 		} else {
