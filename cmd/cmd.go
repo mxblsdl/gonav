@@ -61,11 +61,11 @@ var navCmd = (&cobra.Command{
 		wg.Wait()
 
 		elapsed := time.Since(start)
-		fmt.Printf("%sOperation took %s\n", helpers.ColorGreen, elapsed)
+		fmt.Printf("%sOperation took %s%s\n", helpers.ColorGreen, elapsed, helpers.ColorReset)
 
 		var index int
 		if len(results) == 0 {
-			fmt.Println("No matching folders found.")
+			fmt.Printf("%sNo matching folders found.%s\n", helpers.ColorYellow, helpers.ColorReset)
 			return
 		} else if len(results) > 1 {
 
