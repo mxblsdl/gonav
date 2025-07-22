@@ -154,12 +154,6 @@ func GetShellCommand(path string, code bool) *exec.Cmd {
 
 	switch runtime.GOOS {
 	case "windows":
-		// For Git Bash
-		// return exec.Command("bash", "-c", fmt.Sprintf("cd '%s'", path))
-		// For PowerShell
-		// return exec.Command("powershell", "-NoProfile", "-Command", fmt.Sprintf("Set-Location '%s'", path))
-		// For CMD
-		// fmt.Println("Executing command:", "cmd", "explorer", path)
 		return exec.Command("cmd", "/C", "start", path)
 	case "darwin":
 		return exec.Command("open", path)

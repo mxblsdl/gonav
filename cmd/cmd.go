@@ -77,20 +77,18 @@ var navCmd = (&cobra.Command{
 
 			// Create a scanner to properly read input
 			scanner := bufio.NewScanner(os.Stdin)
-			if scanner.Scan() {
-				response := scanner.Text()
-				userIndex, err := strconv.Atoi(strings.TrimSpace(response))
-				if err != nil || userIndex < 0 || userIndex >= len(results) {
-					fmt.Printf("%sInvalid selection: %v%s\n", helpers.ColorRed, err, helpers.ColorReset)
-					return
-				}
-				index = userIndex
-			} else {
+			if !scanner.Scan() {
 				fmt.Printf("%sError reading input%s\n", helpers.ColorRed, helpers.ColorReset)
 				return
 			}
-		} else {
-			index = 0
+
+			response := scanner.Text()
+			userIndex, err := strconv.Atoi(strings.TrimSpace(response))
+			if err != nil || userIndex < 0 || userIndex >= len(results) {
+				fmt.Printf("%sInvalid selection: %v%s\n", helpers.ColorRed, err, helpers.ColorReset)
+				return
+			}
+			index = userIndex
 		}
 
 		fmt.Printf("You selected: %s\n%s", results[index], helpers.ColorReset)
