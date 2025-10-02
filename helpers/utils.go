@@ -1,13 +1,16 @@
 package helpers
 
 import (
+	"bufio"
 	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/viper"
@@ -160,4 +163,83 @@ func GetShellCommand(path string, code bool) *exec.Cmd {
 	default: // Linux
 		return exec.Command("xdg-open", path)
 	}
+}
+
+func SearchFolders(inputFolders []string, searchString string) string {
+	start := time.Now()
+	results := make(chan string, 100)
+	done := make(chan bool)
+	var wg sync.WaitGroup
+	var matchedFolders []string
+
+	go func() {
+		fmt.Printf("\033[s") // save cursor position
+		count := 0
+		for result := range results {
+			matchedFolders = append(matchedFolders, result)
+			fmt.Printf("\033[u\033[J") // restore cursor position
+			fmt.Printf("%sFound: %s%s\n", ColorGreen, result, ColorReset)
+			fmt.Printf("%s%d%s: %s\n", ColorBlue, count, ColorReset, result)
+			count++
+		}
+		done <- true
+	}()
+
+	for _, folder := range inputFolders {
+		wg.Add(1)
+		go func(folder string) {
+			defer wg.Done()
+			folder = ExpandPath(folder)
+			files, err := os.ReadDir(folder)
+			if err != nil {
+				fmt.Printf("Error reading folder %s: %v\n", folder, err)
+				return
+			}
+
+			for _, file := range files {
+				if file.IsDir() && strings.Contains(strings.ToLower(file.Name()), strings.ToLower(searchString)) {
+					results <- folder + "/" + file.Name()
+				}
+			}
+		}(folder)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	<-done // wait for all results to be printed
+
+	elapsed := time.Since(start)
+	fmt.Printf("%sOperation took %s%s\n", ColorGreen, elapsed, ColorReset)
+
+	var index int
+	if len(matchedFolders) == 0 {
+		fmt.Printf("%sNo matching folders found.%s\n", ColorYellow, ColorReset)
+		return ""
+	} else if len(matchedFolders) > 1 {
+
+		fmt.Printf("%sMore than one project returned:\n", ColorYellow)
+		for i, result := range matchedFolders {
+			fmt.Printf("%s%d%s: %s\n", ColorBlue, i, ColorReset, result)
+		}
+		fmt.Printf("%sEnter index of selection: %s", ColorBoldGreen, ColorReset)
+
+		// Create a scanner to properly read input
+		scanner := bufio.NewScanner(os.Stdin)
+		if !scanner.Scan() {
+			fmt.Printf("%sError reading input%s\n", ColorRed, ColorReset)
+			return ""
+		}
+
+		response := scanner.Text()
+		userIndex, err := strconv.Atoi(strings.TrimSpace(response))
+		if err != nil || userIndex < 0 || userIndex >= len(results) {
+			fmt.Printf("%sInvalid selection: %v%s\n", ColorRed, err, ColorReset)
+			return ""
+		}
+		index = userIndex
+	}
+	return matchedFolders[index]
 }
