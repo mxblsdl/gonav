@@ -48,15 +48,16 @@ func main() {
 
 	switch runtime.GOOS {
 	case "windows":
-		destDir = filepath.Join(homeDir, "AppData", "Local")
+		destDir = filepath.Join(homeDir, "AppData", "Local", "nav")
 		binName = binaryName + ".exe"
 	case "linux":
-		destDir = filepath.Join(homeDir, "bin")
+		destDir = filepath.Join(homeDir, ".local", "bin")
 		binName = binaryName
 	case "darwin":
-		destDir = filepath.Join(homeDir, "bin")
+		destDir = filepath.Join(homeDir, ".local", "bin")
 		binName = binaryName
 	}
+	
 	// Create destination directory if it doesn't exist (Windows)
 	if runtime.GOOS == "windows" {
 		err := os.MkdirAll(destDir, 0755)
