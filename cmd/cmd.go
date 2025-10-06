@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/mxblsdl/gonav/helpers"
 	"github.com/spf13/cobra"
@@ -25,11 +26,15 @@ var navCmd = (&cobra.Command{
 			return
 		}
 
-		matchFolder := helpers.SearchFolders(folders, searchTerm)
+		matchFolder, err := helpers.SearchFolders(folders, searchTerm)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(0)
+		}
 
 		fmt.Printf("You selected: %s\n%s", matchFolder, helpers.ColorReset)
-		command := helpers.GetShellCommand(matchFolder, false)
-		err := command.Start()
+		command := helpers.OpenShellCommand(matchFolder)
+		err = command.Start()
 		if err != nil {
 			fmt.Println("Error opening folder:", err)
 			os.Exit(1)
@@ -51,11 +56,44 @@ var codeCmd = (&cobra.Command{
 			return
 		}
 
-		matchFolder := helpers.SearchFolders(folders, searchTerm)
+		matchFolder, err := helpers.SearchFolders(folders, searchTerm)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(0)
+		}
 
 		fmt.Printf("You selected: %s\n%s", matchFolder, helpers.ColorReset)
-		command := helpers.GetShellCommand(matchFolder, true)
-		err := command.Start()
+		command := exec.Command("code", matchFolder)
+		err = command.Start()
+		if err != nil {
+			fmt.Println("Error opening folder:", err)
+			os.Exit(1)
+		}
+	},
+})
+
+var posiCmd = (&cobra.Command{
+	Use:     "positron [folder]",
+	Short:   "Open a folder with Positron",
+	Aliases: []string{"p"},
+	Args:    cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		searchTerm := args[0]
+		folders := viper.GetStringSlice("Folders")
+		if len(folders) == 0 {
+			fmt.Printf("%sNo default folders found in the configuration.", helpers.ColorBoldRed)
+			return
+		}
+
+		matchFolder, err := helpers.SearchFolders(folders, searchTerm)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(0)
+		}
+
+		fmt.Printf("You selected: %s\n%s", matchFolder, helpers.ColorReset)
+		command := exec.Command("positron", matchFolder)
+		err = command.Start()
 		if err != nil {
 			fmt.Println("Error opening folder:", err)
 			os.Exit(1)
@@ -99,5 +137,5 @@ func init() {
 	rootCmd.AddCommand(printCmd)
 	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(codeCmd)
-
+	rootCmd.AddCommand(posiCmd)
 }

@@ -150,11 +150,7 @@ func ScanWithWalkDir(root string) ([]string, error) {
 	return folders, nil
 }
 
-func GetShellCommand(path string, code bool) *exec.Cmd {
-	if code {
-		return exec.Command("code", path)
-	}
-
+func OpenShellCommand(path string) *exec.Cmd {
 	switch runtime.GOOS {
 	case "windows":
 		return exec.Command("cmd", "/C", "start", path)
@@ -165,7 +161,7 @@ func GetShellCommand(path string, code bool) *exec.Cmd {
 	}
 }
 
-func SearchFolders(inputFolders []string, searchString string) string {
+func SearchFolders(inputFolders []string, searchString string) (string, error) {
 	start := time.Now()
 	results := make(chan string, 100)
 	done := make(chan bool)
@@ -216,8 +212,7 @@ func SearchFolders(inputFolders []string, searchString string) string {
 
 	var index int
 	if len(matchedFolders) == 0 {
-		fmt.Printf("%sNo matching folders found.%s\n", ColorYellow, ColorReset)
-		return ""
+		return "", fmt.Errorf("%sno matching folders found%s\n", ColorYellow, ColorReset)
 	} else if len(matchedFolders) > 1 {
 
 		fmt.Printf("%sMore than one project returned:\n", ColorYellow)
@@ -230,16 +225,20 @@ func SearchFolders(inputFolders []string, searchString string) string {
 		scanner := bufio.NewScanner(os.Stdin)
 		if !scanner.Scan() {
 			fmt.Printf("%sError reading input%s\n", ColorRed, ColorReset)
-			return ""
+			return "", fmt.Errorf("error reading input")
 		}
 
 		response := scanner.Text()
 		userIndex, err := strconv.Atoi(strings.TrimSpace(response))
-		if err != nil || userIndex < 0 || userIndex >= len(results) {
+		fmt.Printf("Debug: selection: %d\n", userIndex)
+		if err != nil {
+			return "", fmt.Errorf("invalid selection")
+		}
+		if userIndex < 0 || userIndex >= len(matchedFolders) {
 			fmt.Printf("%sInvalid selection: %v%s\n", ColorRed, err, ColorReset)
-			return ""
+			return "", fmt.Errorf("invalid selection")
 		}
 		index = userIndex
 	}
-	return matchedFolders[index]
+	return matchedFolders[index], nil
 }
