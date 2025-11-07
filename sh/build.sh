@@ -35,12 +35,11 @@ done
 
 # Now build the installer after the binaries are in place
 echo "Building installers..."
-cd installer
-GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-windows-amd64.exe main.go
-GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-linux-amd64 main.go
-GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/nav-darwin-amd64 main.go
+GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o installer/dist/nav-windows-amd64.exe ./installer
+GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o installer/dist/nav-linux-amd64 ./installer
+GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o installer/dist/nav-darwin-amd64 ./installer
 
-chmod +x dist/nav-linux-amd64 dist/nav-darwin-amd64
+chmod +x installer/dist/nav-linux-amd64 installer/dist/nav-darwin-amd64
 
 echo "Build complete! Installers created in installer/dist/"
-ls -lh dist/
+ls -lh installer/dist/

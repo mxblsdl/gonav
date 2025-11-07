@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 )
@@ -25,7 +26,7 @@ func init() {
 
 	fmt.Println("Embedded files in binary/:")
 	for _, entry := range entries {
-		subEntries, _ := embeddedFiles.ReadDir(filepath.Join("binary", entry.Name()))
+		subEntries, _ := embeddedFiles.ReadDir("binary/" + entry.Name())
 		fmt.Printf("- %s/\n", entry.Name())
 		for _, subEntry := range subEntries {
 			fmt.Printf("  └── %s\n", subEntry.Name())
@@ -33,41 +34,38 @@ func init() {
 	}
 }
 
-var (
-	binaryName = "nav"
-)
-
-func main() {
-	var destDir string
-	var binName string
-
+func getInstallConfig() (destDir, binName string, err error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Printf("Unable to find home directory: %v\n", err)
+		return "", "", fmt.Errorf("unable to find home directory: %w", err)
 	}
 
 	switch runtime.GOOS {
 	case "windows":
-		destDir = filepath.Join(homeDir, "AppData", "Local", "nav")
-		binName = binaryName + ".exe"
-	case "linux":
-		destDir = filepath.Join(homeDir, ".local", "bin")
-		binName = binaryName
-	case "darwin":
-		destDir = filepath.Join(homeDir, ".local", "bin")
-		binName = binaryName
+		return filepath.Join(homeDir, "AppData", "Local", "nav"), "nav.exe", nil
+	case "linux", "darwin":
+		return filepath.Join(homeDir, ".local", "bin"), "nav", nil
+	default:
+		return "", "", fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
-	
+}
+
+func main() {
+	destDir, binName, err := getInstallConfig()
+	if err != nil {
+		fmt.Printf("Error getting install config: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Create destination directory if it doesn't exist (Windows)
-	if runtime.GOOS == "windows" {
-		err := os.MkdirAll(destDir, 0755)
-		if err != nil {
-			fmt.Printf("Failed to create destination directory: %v\n", err)
-			os.Exit(1)
-		}
+	err = os.MkdirAll(destDir, 0755)
+	if err != nil {
+		fmt.Printf("Failed to create destination directory: %v\n", err)
+		os.Exit(1)
 	}
+
 	// Read the embedded binary for current OS
-	osPath := filepath.Join("binary", runtime.GOOS, binName)
+	osPath := path.Join("binary", runtime.GOOS, binName)
 	binaryData, err := embeddedFiles.ReadFile(osPath)
 	if err != nil {
 		fmt.Printf("Error reading embedded binary: %v\n", err)
@@ -83,17 +81,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Successfully installed %s to %s\n", binaryName, destPath)
+	fmt.Printf("Successfully installed %s to %s\n", binName, destPath)
 }
-
-// func ExpandPath(path string) string {
-// 	if path[:2] == "~/" {
-// 		homedir, err := os.UserHomeDir()
-// 		if err != nil {
-// 			fmt.Println("Error getting home directory:", err)
-// 			return path
-// 		}
-// 		return homedir + path[1:]
-// 	}
-// 	return path
-// }
