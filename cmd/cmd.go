@@ -128,7 +128,11 @@ var addCmd = (&cobra.Command{
 			fmt.Printf("%sNo config file found. Initialize with `gonav`", helpers.ColorRed)
 			return
 		}
-		helpers.OpenInEditor(configFile)
+		err := helpers.OpenInEditor(configFile)
+		if err != nil {
+			fmt.Printf("%sError opening config file: %v%s\n", helpers.ColorRed, err, helpers.ColorReset)
+			return
+		}
 	},
 })
 

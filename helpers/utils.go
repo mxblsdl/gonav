@@ -29,12 +29,33 @@ func ExpandPath(path string) string {
 	return path
 }
 
-func OpenInEditor(filePath string) {
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		editor = "nano" // default to nano if EDITOR is not set
+func OpenInEditor(filePath string) error {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		// Use notepad on Windows
+		cmd = exec.Command("notepad", filePath)
+	case "darwin":
+		// Use nano on macOS
+		cmd = exec.Command("nano", filePath)
+	default: // Linux
+		// Try common editors in order of preference
+		editor := os.Getenv("EDITOR")
+		if editor == "" {
+			// Fallback to common editors
+			for _, e := range []string{"nano", "vi", "vim"} {
+				if _, err := exec.LookPath(e); err == nil {
+					editor = e
+					break
+				}
+			}
+		}
+		if editor == "" {
+			return fmt.Errorf("no editor found")
+		}
+		cmd = exec.Command(editor, filePath)
 	}
-	cmd := exec.Command(editor, filePath)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -43,6 +64,7 @@ func OpenInEditor(filePath string) {
 		fmt.Println("Error opening config file in editor:", err)
 		os.Exit(1)
 	}
+	return nil
 }
 
 func PrintConfigMessage(hour int64, cacheFile string) {
@@ -92,7 +114,11 @@ func createConfig(defaultConfigPath string) {
 			os.Exit(1)
 		}
 		fmt.Println("Default config file created at", defaultConfigPath)
-		OpenInEditor(defaultConfigPath)
+		err = OpenInEditor(defaultConfigPath)
+		if err != nil {
+			fmt.Printf("%sError opening config file: %v%s\n", ColorRed, err, ColorReset)
+			return
+		}
 	}
 }
 
@@ -174,8 +200,6 @@ func SearchFolders(inputFolders []string, searchString string) (string, error) {
 		for result := range results {
 			matchedFolders = append(matchedFolders, result)
 			fmt.Printf("\033[u\033[J") // restore cursor position
-			fmt.Printf("%sFound: %s%s\n", ColorGreen, result, ColorReset)
-			fmt.Printf("%s%d%s: %s\n", ColorBlue, count, ColorReset, result)
 			count++
 		}
 		done <- true
