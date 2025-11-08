@@ -209,18 +209,7 @@ func SearchFolders(inputFolders []string, searchString string) (string, error) {
 		wg.Add(1)
 		go func(folder string) {
 			defer wg.Done()
-			folder = ExpandPath(folder)
-			files, err := os.ReadDir(folder)
-			if err != nil {
-				fmt.Printf("Error reading folder %s: %v\n", folder, err)
-				return
-			}
-
-			for _, file := range files {
-				if file.IsDir() && strings.Contains(strings.ToLower(file.Name()), strings.ToLower(searchString)) {
-					results <- folder + "/" + file.Name()
-				}
-			}
+			searchRecursive(ExpandPath(folder), searchString, &wg, results)
 		}(folder)
 	}
 
@@ -238,31 +227,59 @@ func SearchFolders(inputFolders []string, searchString string) (string, error) {
 	if len(matchedFolders) == 0 {
 		return "", fmt.Errorf("%sno matching folders found%s\n", ColorYellow, ColorReset)
 	} else if len(matchedFolders) > 1 {
-
 		fmt.Printf("%sMore than one project returned:\n", ColorYellow)
 		for i, result := range matchedFolders {
 			fmt.Printf("%s%d%s: %s\n", ColorBlue, i, ColorReset, result)
 		}
 		fmt.Printf("%sEnter index of selection: %s", ColorBoldGreen, ColorReset)
 
-		// Create a scanner to properly read input
 		scanner := bufio.NewScanner(os.Stdin)
 		if !scanner.Scan() {
-			fmt.Printf("%sError reading input%s\n", ColorRed, ColorReset)
 			return "", fmt.Errorf("error reading input")
 		}
 
 		response := scanner.Text()
 		userIndex, err := strconv.Atoi(strings.TrimSpace(response))
-		fmt.Printf("Debug: selection: %d\n", userIndex)
 		if err != nil {
 			return "", fmt.Errorf("invalid selection")
 		}
 		if userIndex < 0 || userIndex >= len(matchedFolders) {
-			fmt.Printf("%sInvalid selection: %v%s\n", ColorRed, err, ColorReset)
-			return "", fmt.Errorf("invalid selection")
+			return "", fmt.Errorf("invalid selection: out of range")
 		}
 		index = userIndex
 	}
 	return matchedFolders[index], nil
+}
+
+func searchRecursive(folderPath string, searchString string, wg *sync.WaitGroup, results chan string) {
+	files, err := os.ReadDir(folderPath)
+	if err != nil {
+		fmt.Printf("Error reading folder %s: %v\n", folderPath, err)
+		return
+	}
+
+	for _, file := range files {
+		if !file.IsDir() {
+			continue
+		}
+
+		// Skip hidden directories
+		if strings.HasPrefix(file.Name(), ".") {
+			continue
+		}
+
+		fullPath := filepath.Join(folderPath, file.Name())
+
+		// Check if folder matches search string
+		if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(searchString)) {
+			results <- fullPath
+		}
+
+		// Recursively search subdirectories
+		wg.Add(1)
+		go func(path string) {
+			defer wg.Done()
+			searchRecursive(path, searchString, wg, results)
+		}(fullPath)
+	}
 }
