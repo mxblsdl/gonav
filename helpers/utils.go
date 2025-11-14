@@ -251,6 +251,19 @@ func SearchFolders(inputFolders []string, searchString string) (string, error) {
 	return matchedFolders[index], nil
 }
 
+func shouldSkipDir(name string) bool {
+	if strings.HasPrefix(name, ".") {
+		return true
+	}
+	skipDirs := []string{"venv", "node_modules", "__pycache__"}
+	for _, skip := range skipDirs {
+		if name == skip {
+			return true
+		}
+	}
+	return false
+}
+
 func searchRecursive(folderPath string, searchString string, wg *sync.WaitGroup, results chan string) {
 	files, err := os.ReadDir(folderPath)
 	if err != nil {
@@ -263,8 +276,8 @@ func searchRecursive(folderPath string, searchString string, wg *sync.WaitGroup,
 			continue
 		}
 
-		// Skip hidden directories
-		if strings.HasPrefix(file.Name(), ".") {
+		// Skip hidden directories and virtual environments
+		if shouldSkipDir(file.Name()) {
 			continue
 		}
 
