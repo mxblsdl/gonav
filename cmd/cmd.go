@@ -64,36 +64,6 @@ var codeCmd = (&cobra.Command{
 		}
 
 		fmt.Printf("You selected: %s\n%s", matchFolder, helpers.ColorReset)
-		command := exec.Command("code", matchFolder)
-		err = command.Start()
-		if err != nil {
-			fmt.Println("Error opening folder:", err)
-			os.Exit(1)
-		}
-	},
-})
-
-var workSpacesCmd = (&cobra.Command{
-	Use:     "workspace [folder]",
-	Short:   "Open a folder with VS Code Workspaces",
-	Aliases: []string{"w"},
-	Args:    cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		searchTerm := args[0]
-		folders := viper.GetStringSlice("Folders")
-		if len(folders) == 0 {
-			fmt.Printf("%sNo default folders found in the configuration.", helpers.ColorBoldRed)
-			return
-		}
-
-		matchFolder, err := helpers.SearchFolders(folders, searchTerm)
-		if err != nil {
-			fmt.Printf("%s\n", err)
-			os.Exit(0)
-		}
-
-		fmt.Printf("You selected: %s\n%s", matchFolder, helpers.ColorReset)
-
 		// Try to find a .code-workspace file in the folder
 		workspaceFile := filepath.Join(matchFolder, "*.code-workspace")
 		files, _ := filepath.Glob(workspaceFile)
@@ -185,5 +155,4 @@ func init() {
 	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(codeCmd)
 	rootCmd.AddCommand(posiCmd)
-	rootCmd.AddCommand(workSpacesCmd)
 }
