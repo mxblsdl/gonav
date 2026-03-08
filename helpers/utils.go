@@ -193,14 +193,21 @@ func SearchFolders(inputFolders []string, searchString string) (string, error) {
 	done := make(chan bool)
 	var wg sync.WaitGroup
 	var matchedFolders []string
+	seenFolders := make(map[string]bool)
+	var mu sync.Mutex
 
 	go func() {
 		fmt.Printf("\033[s") // save cursor position
 		count := 0
 		for result := range results {
-			matchedFolders = append(matchedFolders, result)
+			mu.Lock()
+			if !seenFolders[result] {
+				seenFolders[result] = true
+				matchedFolders = append(matchedFolders, result)
+				count++
+			}
+			mu.Unlock()
 			fmt.Printf("\033[u\033[J") // restore cursor position
-			count++
 		}
 		done <- true
 	}()
