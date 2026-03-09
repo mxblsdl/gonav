@@ -71,10 +71,12 @@ var codeCmd = (&cobra.Command{
 		if len(files) > 0 {
 			// Open the workspace file
 			command := exec.Command("code", files[0])
+			fmt.Printf("Running command: %s%s%s\n", helpers.BgGreen, command, helpers.ColorReset)
 			err = command.Start()
 		} else {
 			// Fallback to opening as a folder
 			command := exec.Command("code", matchFolder)
+			fmt.Printf("Running command: %s%s%s", helpers.BgGreen, command, helpers.ColorReset)
 			err = command.Start()
 		}
 
