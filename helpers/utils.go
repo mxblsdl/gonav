@@ -189,6 +189,7 @@ func OpenShellCommand(path string) *exec.Cmd {
 
 func SearchFolders(inputFolders []string, searchString string) (string, error) {
 	start := time.Now()
+	searchString = strings.ToLower(searchString)
 	results := make(chan string, 100)
 	done := make(chan bool)
 	var wg sync.WaitGroup
@@ -264,7 +265,7 @@ func shouldSkipDir(name string) bool {
 	}
 	skipDirs := []string{"venv", "node_modules", "__pycache__"}
 	for _, skip := range skipDirs {
-		if name == skip {
+		if strings.EqualFold(name, skip) {
 			return true
 		}
 	}
@@ -291,7 +292,7 @@ func searchRecursive(folderPath string, searchString string, wg *sync.WaitGroup,
 		fullPath := filepath.Join(folderPath, file.Name())
 
 		// Check if folder matches search string
-		if strings.Contains(strings.ToLower(file.Name()), strings.ToLower(searchString)) {
+		if strings.Contains(strings.ToLower(file.Name()), searchString) {
 			results <- fullPath
 		}
 
