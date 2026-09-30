@@ -67,21 +67,24 @@ var codeCmd = (&cobra.Command{
 		// Try to find a .code-workspace file in the folder
 		workspaceFile := filepath.Join(matchFolder, "*.code-workspace")
 		files, _ := filepath.Glob(workspaceFile)
+		var command *exec.Cmd
 
 		if len(files) > 0 {
 			// Open the workspace file
-			command := exec.Command("code", files[0])
+			command = exec.Command("code", files[0])
 			fmt.Printf("Running command: %s%s%s\n", helpers.BgGreen, command, helpers.ColorReset)
-			err = command.Start()
 		} else {
 			// Fallback to opening as a folder
-			command := exec.Command("code", matchFolder)
+			command = exec.Command("code", matchFolder)
 			fmt.Printf("Running command: %s%s%s", helpers.BgGreen, command, helpers.ColorReset)
-			err = command.Start()
 		}
 
+		output, err := command.CombinedOutput()
 		if err != nil {
-			fmt.Println("Error opening folder:", err)
+			fmt.Printf("Error occurred while running command %q: %v\n", command.String(), err)
+			if len(output) > 0 {
+				fmt.Printf("Command output: %s", output)
+			}
 			os.Exit(1)
 		}
 	},
@@ -108,9 +111,12 @@ var posiCmd = (&cobra.Command{
 
 		fmt.Printf("You selected: %s\n%s", matchFolder, helpers.ColorReset)
 		command := exec.Command("positron", matchFolder)
-		err = command.Start()
+		output, err := command.CombinedOutput()
 		if err != nil {
-			fmt.Println("Error opening folder:", err)
+			fmt.Printf("Error occurred while running command %q: %v\n", command.String(), err)
+			if len(output) > 0 {
+				fmt.Printf("Command output: %s", output)
+			}
 			os.Exit(1)
 		}
 	},
