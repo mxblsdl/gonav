@@ -11,36 +11,37 @@ import (
 	"github.com/spf13/viper"
 )
 
+var openExplorer bool
+
 var navCmd = (&cobra.Command{
 	Use:   "go [folder]",
 	Short: "Navigate to a project folder",
-	Long: `Navigate to a project folder within the default folders specified in the configuration. 
-	You can specify the depth of the search using the --depth flag. 
-	Use the --code flag to open the selected folder with VS Code.`,
+	Long: `Navigate to a project folder within the default folders specified in the configuration.
+	By default, launch an interactive shell in the selected folder.
+	Use --open to open the selected folder in your file explorer instead.`,
 	Aliases: []string{"go"},
 	Args:    cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		searchTerm := args[0]
 		folders := viper.GetStringSlice("Folders")
 		if len(folders) == 0 {
-			fmt.Printf("%sNo default folders found in the configuration.", helpers.ColorBoldRed)
-			return
+			return fmt.Errorf("no default folders found in the configuration")
 		}
 
 		matchFolder, err := helpers.SearchFolders(folders, searchTerm)
 		if err != nil {
-			fmt.Printf("%s\n", err)
-			os.Exit(0)
+			return err
 		}
 
-		fmt.Printf("You selected: %s\n%s", matchFolder, helpers.ColorReset)
-		command := helpers.OpenShellCommand(matchFolder)
-		err = command.Start()
-		if err != nil {
-			fmt.Println("Error opening folder:", err)
-			os.Exit(1)
+		if openExplorer {
+			command := helpers.OpenShellCommand(matchFolder)
+			if err := command.Start(); err != nil {
+				return fmt.Errorf("error opening folder: %w", err)
+			}
+			return nil
 		}
 
+		return helpers.RunShellInDirectory(matchFolder)
 	},
 })
 
@@ -158,6 +159,7 @@ var addCmd = (&cobra.Command{
 })
 
 func init() {
+	navCmd.Flags().BoolVarP(&openExplorer, "open", "o", false, "Open the selected folder in the file explorer")
 	rootCmd.AddCommand(navCmd)
 	rootCmd.AddCommand(printCmd)
 	rootCmd.AddCommand(addCmd)

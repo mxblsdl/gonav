@@ -79,10 +79,10 @@ func PrintConfigMessage(hour int64, cacheFile string) {
 	}
 
 	if time.Since(lastPrinted) > printInterval {
-		fmt.Println("Config file found:", configFile, "\nThis message is printed once every 8 hours")
+		fmt.Fprintln(os.Stderr, "Config file found:", configFile, "\nThis message is printed once every 8 hours")
 		err := os.WriteFile(cacheFile, []byte(time.Now().Format(time.RFC3339)), 0644)
 		if err != nil {
-			fmt.Println("Error writing to cache file:", err)
+			fmt.Fprintln(os.Stderr, "Error writing to cache file:", err)
 		}
 	}
 }
@@ -179,12 +179,40 @@ func ScanWithWalkDir(root string) ([]string, error) {
 func OpenShellCommand(path string) *exec.Cmd {
 	switch runtime.GOOS {
 	case "windows":
-		return exec.Command("cmd", "/C", "start", path)
+		return exec.Command("explorer", path)
 	case "darwin":
 		return exec.Command("open", path)
 	default: // Linux
 		return exec.Command("xdg-open", path)
 	}
+}
+
+func RunShellInDirectory(path string) error {
+	var shell string
+	switch runtime.GOOS {
+	case "windows":
+		shell = os.Getenv("COMSPEC")
+		if shell == "" {
+			shell = "cmd.exe"
+		}
+	case "linux", "darwin":
+		shell = os.Getenv("SHELL")
+		if shell == "" {
+			shell = "/bin/sh"
+		}
+	default:
+		return fmt.Errorf("launching a shell is not supported on %s", runtime.GOOS)
+	}
+
+	command := exec.Command(shell)
+	command.Dir = path
+	command.Stdin = os.Stdin
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
+	if err := command.Run(); err != nil {
+		return fmt.Errorf("running shell in %s: %w", path, err)
+	}
+	return nil
 }
 
 func SearchFolders(inputFolders []string, searchString string) (string, error) {
@@ -198,7 +226,7 @@ func SearchFolders(inputFolders []string, searchString string) (string, error) {
 	var mu sync.Mutex
 
 	go func() {
-		fmt.Printf("\033[s") // save cursor position
+		fmt.Fprintf(os.Stderr, "\033[s") // save cursor position
 		count := 0
 		for result := range results {
 			mu.Lock()
@@ -208,7 +236,7 @@ func SearchFolders(inputFolders []string, searchString string) (string, error) {
 				count++
 			}
 			mu.Unlock()
-			fmt.Printf("\033[u\033[J") // restore cursor position
+			fmt.Fprintf(os.Stderr, "\033[u\033[J") // restore cursor position
 		}
 		done <- true
 	}()
@@ -229,17 +257,17 @@ func SearchFolders(inputFolders []string, searchString string) (string, error) {
 	<-done // wait for all results to be printed
 
 	elapsed := time.Since(start)
-	fmt.Printf("%sOperation took %s%s\n", ColorGreen, elapsed, ColorReset)
+	fmt.Fprintf(os.Stderr, "%sOperation took %s%s\n", ColorGreen, elapsed, ColorReset)
 
 	var index int
 	if len(matchedFolders) == 0 {
 		return "", fmt.Errorf("%sno matching folders found%s\n", ColorYellow, ColorReset)
 	} else if len(matchedFolders) > 1 {
-		fmt.Printf("%sMore than one project returned:\n", ColorYellow)
+		fmt.Fprintf(os.Stderr, "%sMore than one project returned:\n", ColorYellow)
 		for i, result := range matchedFolders {
-			fmt.Printf("%s%d%s: %s\n", ColorBlue, i, ColorReset, result)
+			fmt.Fprintf(os.Stderr, "%s%d%s: %s\n", ColorBlue, i, ColorReset, result)
 		}
-		fmt.Printf("%sEnter index of selection: %s", ColorBoldGreen, ColorReset)
+		fmt.Fprintf(os.Stderr, "%sEnter index of selection: %s", ColorBoldGreen, ColorReset)
 
 		scanner := bufio.NewScanner(os.Stdin)
 		if !scanner.Scan() {
@@ -275,7 +303,7 @@ func shouldSkipDir(name string) bool {
 func searchRecursive(folderPath string, searchString string, wg *sync.WaitGroup, results chan string) {
 	files, err := os.ReadDir(folderPath)
 	if err != nil {
-		fmt.Printf("Error reading folder %s: %v\n", folderPath, err)
+		fmt.Fprintf(os.Stderr, "Error reading folder %s: %v\n", folderPath, err)
 		return
 	}
 
